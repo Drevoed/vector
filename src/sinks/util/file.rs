@@ -1,18 +1,23 @@
-use crate::{
-    event::Event,
-    sinks::util::encoding::{self, BasicEncoding},
-};
+use crate::event::{self, Event};
 
 use bytes::Bytes;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 
 use futures::{try_ready, Async, AsyncSink, Future, Poll, Sink, StartSend};
+use serde::{Deserialize, Serialize};
 use tokio::codec::{BytesCodec, FramedWrite};
 use tokio::fs::file::{File, OpenFuture};
 use tokio::fs::OpenOptions;
 
 use tracing::field;
+
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum Encoding {
+    Text,
+    Json,
+}
 
 pub type EmbeddedFileSink = Box<dyn Sink<SinkItem = Event, SinkError = ()> + 'static + Send>;
 
@@ -45,10 +50,10 @@ impl FileSink {
         }
     }
 
-    pub fn new_with_encoding(path: &Path, encoding: Option<BasicEncoding>) -> EmbeddedFileSink {
+    pub fn new_with_encoding(path: &Path, encoding: Option<Encoding>) -> EmbeddedFileSink {
         let sink = FileSink::new(path.to_path_buf())
             .sink_map_err(|err| error!("Terminating the sink due to error: {}", err))
-            .with(move |event| encoding::log_event_as_bytes_with_nl(event, &encoding));
+            .with(move |event| Self::encode_event(event, &encoding));
 
         Box::new(sink)
     }
@@ -74,6 +79,27 @@ impl FileSink {
                 },
             }
         }
+    }
+
+    fn encode_event(event: Event, encoding: &Option<Encoding>) -> Result<Bytes, ()> {
+        let log = event.into_log();
+
+        let result = match (encoding, log.is_structured()) {
+            (&Some(Encoding::Json), _) | (_, true) => {
+                serde_json::to_vec(&log.all_fields()).map_err(|e| panic!("Error encoding: {}", e))
+            }
+
+            (&Some(Encoding::Text), _) | (_, false) => {
+                Ok(log.get(&event::MESSAGE)
+                   .map(|v| v.as_bytes().to_vec())
+                   .unwrap_or(Vec::new()))
+            }
+        };
+
+        result.map(|mut bytes| {
+            bytes.push(b'\n');
+            Bytes::from(bytes)
+        })
     }
 }
 
@@ -145,7 +171,6 @@ mod tests {
     use super::*;
     use crate::{
         event::Event,
-        sinks::util::encoding::BasicEncoding,
         test_util::{lines_from_file, random_lines_with_stream},
     };
 
@@ -155,7 +180,7 @@ mod tests {
     #[test]
     fn text_output_is_correct() {
         let (input, events) = random_lines_with_stream(100, 16);
-        let output = test_with_encoding(events, BasicEncoding::Text, None);
+        let output = test_with_encoding(events, Encoding::Text, None);
 
         for (input, output) in input.into_iter().zip(output) {
             assert_eq!(input, output);
@@ -165,7 +190,7 @@ mod tests {
     #[test]
     fn json_output_is_correct() {
         let (input, events) = random_lines_with_stream(100, 16);
-        let output = test_with_encoding(events, BasicEncoding::Json, None);
+        let output = test_with_encoding(events, Encoding::Json, None);
 
         for (input, output) in input.into_iter().zip(output) {
             let output: serde_json::Value = serde_json::from_str(&output[..]).unwrap();
@@ -179,10 +204,10 @@ mod tests {
         let directory = tempdir().unwrap().into_path();
 
         let (mut input1, events) = random_lines_with_stream(100, 16);
-        test_with_encoding(events, BasicEncoding::Text, Some(directory.clone()));
+        test_with_encoding(events, Encoding::Text, Some(directory.clone()));
 
         let (mut input2, events) = random_lines_with_stream(100, 16);
-        let output = test_with_encoding(events, BasicEncoding::Text, Some(directory));
+        let output = test_with_encoding(events, Encoding::Text, Some(directory));
 
         let mut input = vec![];
         input.append(&mut input1);
@@ -197,7 +222,7 @@ mod tests {
 
     fn test_with_encoding<S>(
         events: S,
-        encoding: BasicEncoding,
+        encoding: Encoding,
         directory: Option<PathBuf>,
     ) -> Vec<String>
     where

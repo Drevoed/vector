@@ -1,6 +1,5 @@
 pub mod batch;
 pub mod buffer;
-pub mod encoding;
 pub mod file;
 pub mod http;
 pub mod partition;

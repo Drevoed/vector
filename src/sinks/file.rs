@@ -2,8 +2,7 @@ use crate::{
     buffers::Acker,
     event::Event,
     sinks::util::{
-        encoding::BasicEncoding,
-        file::{EmbeddedFileSink, FileSink},
+        file::{EmbeddedFileSink, FileSink, Encoding},
         SinkExt,
     },
     template::Template,
@@ -23,7 +22,7 @@ use std::time::Instant;
 pub struct FileSinkConfig {
     pub path: String,
     pub close_timeout_secs: Option<u64>,
-    pub encoding: Option<BasicEncoding>,
+    pub encoding: Option<Encoding>,
 }
 
 impl FileSinkConfig {
@@ -56,7 +55,7 @@ impl crate::topology::config::SinkConfig for FileSinkConfig {
 
 pub struct PartitionedFileSink {
     path: Template,
-    encoding: Option<BasicEncoding>,
+    encoding: Option<Encoding>,
     close_timeout_secs: Option<u64>,
 
     partitions: HashMap<Arc<Path>, EmbeddedFileSink>,
@@ -68,7 +67,7 @@ impl PartitionedFileSink {
     pub fn new(
         path: Template,
         close_timeout_secs: Option<u64>,
-        encoding: Option<BasicEncoding>,
+        encoding: Option<Encoding>,
     ) -> Self {
         PartitionedFileSink {
             path,

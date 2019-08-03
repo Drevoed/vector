@@ -1,9 +1,7 @@
+use super::util::SinkExt;
 use crate::{
     buffers::Acker,
-    sinks::util::{
-        encoding::{self, BasicEncoding},
-        SinkExt,
-    },
+    event::{self, Event},
     topology::config::{DataType, SinkConfig},
 };
 use futures::{future, Sink};
@@ -31,7 +29,14 @@ impl Default for Target {
 pub struct ConsoleSinkConfig {
     #[serde(default)]
     pub target: Target,
-    pub encoding: Option<BasicEncoding>,
+    pub encoding: Option<Encoding>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Eq, PartialEq, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum Encoding {
+    Text,
+    Json,
 }
 
 #[typetag::serde(name = "console")]
@@ -47,7 +52,7 @@ impl SinkConfig for ConsoleSinkConfig {
         let sink = FramedWrite::new(output, LinesCodec::new())
             .stream_ack(acker)
             .sink_map_err(|_| ())
-            .with(move |event| encoding::event_as_string(event, &encoding));
+            .with(move |event| encode_event(event, &encoding));
 
         Ok((Box::new(sink), Box::new(future::ok(()))))
     }
