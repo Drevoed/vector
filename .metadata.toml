@@ -1219,6 +1219,17 @@ enum = ["json", "text"]
 null = true
 description = "The encoding format used to serialize the events before flushing."
 
+[sinks.tcp.options.tls]
+type = "table"
+null = true
+description = "Options for TLS support"
+
+[sinks.tcp.options.tls.options.enabled]
+type = "bool"
+null = true
+default = false
+description = "Enable TLS during connections to the remote."
+
 # ------------------------------------------------------------------------------
 # sinks.vector
 # ------------------------------------------------------------------------------

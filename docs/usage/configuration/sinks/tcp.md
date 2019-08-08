@@ -37,6 +37,10 @@ The `tcp` sink [streams](#streaming) [`log`][docs.log_event] events to a TCP con
     when_full = "block" # default, enum: "block" or "drop_newest"
     max_size = 104900000 # no default, bytes, relevant when type = "disk"
     num_items = 500 # default, events, relevant when type = "memory"
+  
+  # OPTIONAL - Tls
+  [sinks.my_tcp_sink_id.tls]
+    enabled = false # default
 ```
 {% endcode-tabs-item %}
 {% code-tabs-item title="vector.toml (schema)" %}
@@ -56,6 +60,10 @@ The `tcp` sink [streams](#streaming) [`log`][docs.log_event] events to a TCP con
     when_full = {"block" | "drop_newest"}
     max_size = <int>
     num_items = <int>
+
+  # OPTIONAL - Tls
+  [sinks.<sink-id>.tls]
+    enabled = <bool>
 ```
 {% endcode-tabs-item %}
 {% code-tabs-item title="vector.toml (specification)" %}
@@ -132,6 +140,17 @@ The `tcp` sink [streams](#streaming) [`log`][docs.log_event] events to a TCP con
     # * default: 500
     # * unit: events
     num_items = 500
+
+  #
+  # Tls
+  #
+
+  [sinks.tcp_sink.tls]
+    # Enable TLS during connections to the remote.
+    # 
+    # * optional
+    # * default: false
+    enabled = false
 ```
 {% endcode-tabs-item %}
 {% endcode-tabs %}
@@ -151,6 +170,8 @@ The `tcp` sink [streams](#streaming) [`log`][docs.log_event] events to a TCP con
 | `buffer.when_full` | `string` | The behavior when the buffer becomes full.<br />`default: "block"` `enum: "block" or "drop_newest"` |
 | `buffer.max_size` | `int` | The maximum size of the buffer on the disk. Only relevant when type = "disk"<br />`no default` `example: 104900000` `unit: bytes` |
 | `buffer.num_items` | `int` | The maximum number of [events][docs.event] allowed in the buffer. Only relevant when type = "memory"<br />`default: 500` `unit: events` |
+| **OPTIONAL** - Tls | | |
+| `tls.enabled` | `bool` | Enable TLS during connections to the remote.<br />`default: false` |
 
 ## How It Works
 
