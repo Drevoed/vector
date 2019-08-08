@@ -2058,6 +2058,14 @@ end
     # * default: false
     enabled = false
 
+    # If `true`, Vector will force certificate validation.
+    # Do NOT set this to `false` unless you know the risks of not verifying
+    # the remote certificate.
+    # 
+    # * optional
+    # * default: true
+    verify = true
+
 [sinks.vector]
   #
   # General
